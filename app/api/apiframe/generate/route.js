@@ -88,11 +88,10 @@ export async function POST(req) {
 
     const response = await fetch(`${APIFRAME_BASE_URL}/videos/generate`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': apiKey,
-        Authorization: `Bearer ${apiKey}`,
-      },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
       body: JSON.stringify(payload),
     });
 
