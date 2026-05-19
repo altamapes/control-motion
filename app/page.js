@@ -206,6 +206,11 @@ export default function Home() {
     return Boolean((imageFile || imageUrl.trim()) && (videoFile || videoUrl.trim()) && !loading);
   }, [imageFile, imageUrl, loading, videoFile, videoUrl]);
 
+console.log("DEBUG CLOUDINARY:", {
+  cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+  preset: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET,
+});
+  
   async function uploadToCloudinary(file, type) {
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
     const preset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
