@@ -101,11 +101,23 @@ export async function POST(req) {
       : { text: await response.text().catch(() => '') };
 
     if (!response.ok) {
-      return Response.json(
-        { error: data?.error || data?.message || data?.detail || data?.text || 'Generate video Apiframe gagal.', details: data },
-        { status: response.status }
-      );
-    }
+  return Response.json(
+    {
+      error:
+        typeof data === "string"
+          ? data
+          : data?.error ||
+            data?.message ||
+            data?.detail ||
+            data?.details ||
+            JSON.stringify(data, null, 2) ||
+            "Generate video Apiframe gagal.",
+      details: data,
+      sentPayload: payload,
+    },
+    { status: response.status }
+  );
+}
 
     const taskId = extractTaskId(data);
     if (!taskId) {
