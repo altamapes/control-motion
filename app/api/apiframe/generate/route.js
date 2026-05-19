@@ -63,28 +63,16 @@ export async function POST(req) {
     if (!prompt) return Response.json({ error: 'Prompt wajib diisi untuk Apiframe.' }, { status: 400 });
 
     const payload = {
-      prompt,
-      model: body.model || 'kling-2.6',
-    };
+  model,
+  prompt:
+    body.prompt?.trim() ||
+    "Create a cinematic AI video from the uploaded reference image. Smooth motion, natural camera movement, realistic lighting, high detail.",
+};
 
-    // Dibuat fleksibel karena beberapa model Apiframe memakai nama field berbeda.
-    if (body.imageUrl) {
-      payload.imageUrl = body.imageUrl;
-      payload.image_url = body.imageUrl;
-    }
-    if (body.videoUrl) {
-      payload.videoUrl = body.videoUrl;
-      payload.video_url = body.videoUrl;
-    }
-    if (body.duration) payload.duration = Number(body.duration);
-    if (body.aspectRatio) {
-      payload.aspectRatio = body.aspectRatio;
-      payload.aspect_ratio = body.aspectRatio;
-    }
-    if (typeof body.cfgScale !== 'undefined') {
-      payload.cfgScale = Number(body.cfgScale);
-      payload.cfg_scale = Number(body.cfgScale);
-    }
+if (body.imageUrl) {
+  payload.image_url = body.imageUrl;
+}
+    
 
     const response = await fetch(`${APIFRAME_BASE_URL}/videos/generate`, {
       method: 'POST',
