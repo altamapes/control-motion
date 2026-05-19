@@ -75,7 +75,7 @@ function extractStatus(data) {
 
 export async function POST(req) {
   try {
-    const apiKey = process.env.APIFRAME_API_KEY;
+    const apiKey = process.env.APIFRAME_API_KEY?.trim();
     if (!apiKey) {
       return Response.json({ error: 'APIFRAME_API_KEY belum diset di Vercel Environment Variables.' }, { status: 500 });
     }
@@ -87,7 +87,6 @@ export async function POST(req) {
     const response = await fetch(`${APIFRAME_BASE_URL}/jobs/${taskId}`, {
       method: 'GET',
       headers: {
-        'X-API-Key': apiKey,
         Authorization: `Bearer ${apiKey}`,
       },
     });
