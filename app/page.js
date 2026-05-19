@@ -212,30 +212,45 @@ console.log("DEBUG CLOUDINARY:", {
 });
   
   async function uploadToCloudinary(file, type) {
-    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
-    const preset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+  // ISI LANGSUNG DI SINI
+  // Ambil dari Cloudinary Dashboard
+  const cloudName = "dis3w8jjg";
+  const uploadPreset = "motion_ai_upload";
 
-    if (!cloudName || !preset) {
-      throw new Error('Cloudinary belum diset. Isi NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME dan NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET di Vercel.');
-    }
-
-    const resourceType = type === 'video' ? 'video' : 'image';
-    const form = new FormData();
-    form.append('file', file);
-    form.append('upload_preset', preset);
-    form.append('folder', 'motion-control');
-
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, {
-      method: 'POST',
-      body: form,
-    });
-
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(data?.error?.message || `Upload ${type} ke Cloudinary gagal. Pastikan preset Cloudinary mode Unsigned.`);
-    }
-    return data.secure_url;
+  if (!cloudName || cloudName === "dis3w8jjg") {
+    throw new Error("Cloudinary cloudName belum diisi di app/page.js");
   }
+
+  if (!uploadPreset || uploadPreset === "motion_ai_upload") {
+    throw new Error("Cloudinary upload preset belum diisi di app/page.js");
+  }
+
+  const resourceType = type === "video" ? "video" : "image";
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", uploadPreset);
+  formData.append("folder", "control-motion");
+
+  const response = await fetch(
+    `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      data?.error?.message ||
+        "Upload ke Cloudinary gagal. Pastikan upload preset sudah unsigned."
+    );
+  }
+
+  return data.secure_url;
+}
 
   async function generate() {
     setLoading(true);
