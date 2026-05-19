@@ -51,7 +51,7 @@ function extractTaskId(data) {
 
 export async function POST(req) {
   try {
-    const apiKey = process.env.APIFRAME_API_KEY;
+    const apiKey = process.env.APIFRAME_API_KEY?.trim();
     if (!apiKey) {
       return Response.json({ error: 'APIFRAME_API_KEY belum diset di Vercel Environment Variables.' }, { status: 500 });
     }
