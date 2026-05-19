@@ -211,19 +211,9 @@ console.log("DEBUG CLOUDINARY:", {
   preset: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET,
 });
   
-  async function uploadToCloudinary(file, type) {
-  // ISI LANGSUNG DI SINI
-  // Ambil dari Cloudinary Dashboard
-  const cloudName = "dis3w8jjg";
-  const uploadPreset = "motion_ai_upload";
-
-  if (!cloudName || cloudName === "dis3w8jjg") {
-    throw new Error("Cloudinary cloudName belum diisi di app/page.js");
-  }
-
-  if (!uploadPreset || uploadPreset === "motion_ai_upload") {
-    throw new Error("Cloudinary upload preset belum diisi di app/page.js");
-  }
+ async function uploadToCloudinary(file, type) {
+  const cloudName = "di3ucvll1";
+  const uploadPreset = "ml_default";
 
   const resourceType = type === "video" ? "video" : "image";
 
@@ -245,7 +235,7 @@ console.log("DEBUG CLOUDINARY:", {
   if (!response.ok) {
     throw new Error(
       data?.error?.message ||
-        "Upload ke Cloudinary gagal. Pastikan upload preset sudah unsigned."
+        "Upload ke Cloudinary gagal. Pastikan preset sudah unsigned."
     );
   }
 
