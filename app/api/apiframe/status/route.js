@@ -87,8 +87,8 @@ export async function POST(req) {
     const response = await fetch(`${APIFRAME_BASE_URL}/jobs/${taskId}`, {
       method: 'GET',
       headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
+  "X-API-Key": apiKey,
+},
     });
 
     const contentType = response.headers.get('content-type') || '';
