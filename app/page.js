@@ -31,6 +31,23 @@ const MODELS = [
   { label: 'Kling 3 Pro', value: 'kling-v3-motion-control-pro', tag: 'Best' },
 ];
 
+
+
+const APIFRAME_MODELS = [
+  { label: 'Apiframe Kling 2.6', value: 'kling-2.6', tag: 'Kling' },
+  { label: 'Apiframe Kling 3.0', value: 'kling-3.0', tag: 'Kling' },
+  { label: 'Apiframe Veo 3', value: 'veo-3', tag: 'Google' },
+  { label: 'Apiframe Veo 3 Fast', value: 'veo-3-fast', tag: 'Fast' },
+  { label: 'Apiframe Wan 2.6', value: 'wan-2.6', tag: 'Wan' },
+  { label: 'Apiframe Wan Flash', value: 'wan-2.6-flash', tag: 'Fast' },
+  { label: 'Apiframe Seedance 2.0', value: 'seedance-2', tag: 'Dance' },
+  { label: 'Apiframe Runway Gen-4 Turbo', value: 'runway-gen4-turbo', tag: 'Runway' },
+  { label: 'Apiframe Luma Ray 2', value: 'luma-ray-2', tag: 'Luma' },
+  { label: 'Apiframe Hailuo 2.3', value: 'hailuo-2.3', tag: 'Hailuo' },
+  { label: 'Apiframe Sora 2', value: 'sora-2', tag: 'Sora' },
+  { label: 'Apiframe Sora 2 Pro', value: 'sora-2-pro', tag: 'Pro' },
+];
+
 const MAX_IMAGE_MB = 25;
 const MAX_VIDEO_MB = 250;
 
@@ -189,7 +206,9 @@ export default function Home() {
   const [videoFile, setVideoFile] = useState(null);
   const [imageUrl, setImageUrl] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
+  const [provider, setProvider] = useState('magnific');
   const [model, setModel] = useState('kling-v3-motion-control-std');
+  const [apiframeModel, setApiframeModel] = useState('kling-2.6');
   const [prompt, setPrompt] = useState('');
   const [orientation, setOrientation] = useState('video');
   const [cfgScale, setCfgScale] = useState(0.5);
@@ -206,41 +225,29 @@ export default function Home() {
     return Boolean((imageFile || imageUrl.trim()) && (videoFile || videoUrl.trim()) && !loading);
   }, [imageFile, imageUrl, loading, videoFile, videoUrl]);
 
-console.log("DEBUG CLOUDINARY:", {
-  cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-  preset: process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET,
-});
-  
- async function uploadToCloudinary(file, type) {
-  const cloudName = "di3ucvll1";
-  const uploadPreset = "ml_default";
+  async function uploadToCloudinary(file, type) {
+    // Supaya langsung jalan setelah upload ke GitHub/Vercel, Cloudinary user sudah diisi langsung di kode.
+    // Cloud name dan unsigned preset aman berada di frontend. Jangan pernah taruh Cloudinary API Secret di sini.
+    const cloudName = 'di3ucvll1';
+    const preset = 'ml_default';
 
-  const resourceType = type === "video" ? "video" : "image";
+    const resourceType = type === 'video' ? 'video' : 'image';
+    const form = new FormData();
+    form.append('file', file);
+    form.append('upload_preset', preset);
+    form.append('folder', 'motion-control');
 
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("upload_preset", uploadPreset);
-  formData.append("folder", "control-motion");
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`, {
+      method: 'POST',
+      body: form,
+    });
 
-  const response = await fetch(
-    `https://api.cloudinary.com/v1_1/${cloudName}/${resourceType}/upload`,
-    {
-      method: "POST",
-      body: formData,
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data?.error?.message || `Upload ${type} ke Cloudinary gagal. Pastikan preset ml_default mode Unsigned dan mendukung file ini.`);
     }
-  );
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(
-      data?.error?.message ||
-        "Upload ke Cloudinary gagal. Pastikan preset sudah unsigned."
-    );
+    return data.secure_url;
   }
-
-  return data.secure_url;
-}
 
   async function generate() {
     setLoading(true);
@@ -270,25 +277,39 @@ console.log("DEBUG CLOUDINARY:", {
       setStatus('creating');
       setUploadProgress('Membuat task generate video...');
 
-      const res = await fetch('/api/generate', {
+      const generateEndpoint = provider === 'apiframe' ? '/api/apiframe/generate' : '/api/generate';
+      const payload =
+        provider === 'apiframe'
+          ? {
+              prompt: prompt?.trim() || 'Create a cinematic motion control video from the uploaded reference image and motion video. Smooth camera movement, realistic subject motion, natural lighting, high quality output.',
+              model: apiframeModel,
+              imageUrl: finalImageUrl,
+              videoUrl: finalVideoUrl,
+              duration: 5,
+              cfgScale,
+              aspectRatio: '16:9',
+            }
+          : {
+              apiKey: apiKey.trim(),
+              imageUrl: finalImageUrl,
+              videoUrl: finalVideoUrl,
+              model,
+              prompt,
+              orientation,
+              cfgScale,
+            };
+
+      const res = await fetch(generateEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          apiKey: apiKey.trim(),
-          imageUrl: finalImageUrl,
-          videoUrl: finalVideoUrl,
-          model,
-          prompt,
-          orientation,
-          cfgScale,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json().catch(() => ({}));
       setRaw(data);
       if (!res.ok) throw new Error(data.error || 'Generate gagal.');
 
-      const id = data.task_id;
+      const id = data.task_id || data.taskId || data.jobId || data.id;
       if (!id) {
         throw new Error('Task ID tidak ditemukan dari response API. Buka Raw Response untuk melihat format response.');
       }
@@ -313,10 +334,11 @@ console.log("DEBUG CLOUDINARY:", {
     if (!taskId) return;
     setError('');
     try {
-      const res = await fetch('/api/status', {
+      const statusEndpoint = provider === 'apiframe' ? '/api/apiframe/status' : '/api/status';
+      const res = await fetch(statusEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: apiKey.trim(), model, taskId }),
+        body: JSON.stringify(provider === 'apiframe' ? { taskId } : { apiKey: apiKey.trim(), model, taskId }),
       });
       const data = await res.json().catch(() => ({}));
       setRaw(data);
@@ -325,7 +347,7 @@ console.log("DEBUG CLOUDINARY:", {
       const nextStatus = normalizeStatus(data?.normalized?.status || data?.status || data?.state);
       setStatus(nextStatus);
 
-      const video = data?.normalized?.videoUrl || data?.video_url || data?.videoUrl || data?.url;
+      const video = data?.normalized?.videoUrl || data?.videoUrl || data?.video_url || data?.url || data?.resultVideo;
       if (video) {
         setResultVideo(video);
         setStatus('completed');
@@ -339,7 +361,7 @@ console.log("DEBUG CLOUDINARY:", {
     if (!autoPoll || !taskId || resultVideo || status === 'failed') return;
     const timer = setInterval(checkStatus, 10000);
     return () => clearInterval(timer);
-  }, [autoPoll, taskId, resultVideo, status, apiKey, model]);
+  }, [autoPoll, taskId, resultVideo, status, apiKey, model, provider, apiframeModel]);
 
   async function copy(text) {
     await navigator.clipboard.writeText(text);
@@ -454,38 +476,69 @@ console.log("DEBUG CLOUDINARY:", {
 
               <div className="grid gap-5">
                 <div>
+                  <label className="label mb-2">Provider</label>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => setProvider('magnific')}
+                      className={cx(
+                        'rounded-2xl border p-4 text-left transition',
+                        provider === 'magnific' ? 'border-yellow-300/60 bg-yellow-300/12' : 'border-white/10 bg-white/[0.04] hover:bg-white/[0.07]'
+                      )}
+                    >
+                      <b>Magnific / Kling Lama</b>
+                      <p className="small mt-1">Route lama tetap aman: /api/generate dan /api/status</p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setProvider('apiframe')}
+                      className={cx(
+                        'rounded-2xl border p-4 text-left transition',
+                        provider === 'apiframe' ? 'border-yellow-300/60 bg-yellow-300/12' : 'border-white/10 bg-white/[0.04] hover:bg-white/[0.07]'
+                      )}
+                    >
+                      <b>Apiframe Video</b>
+                      <p className="small mt-1">Route baru: /api/apiframe/generate dan /api/apiframe/status</p>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
                   <label className="label mb-2">API Key</label>
                   <input
                     className="input"
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="Kosongkan jika MAGNIFIC_API_KEY sudah di Vercel"
+                    placeholder={provider === 'apiframe' ? 'Apiframe memakai APIFRAME_API_KEY di Vercel' : 'Kosongkan jika MAGNIFIC_API_KEY sudah di Vercel'}
                     type="password"
                     autoComplete="off"
                   />
-                  <p className="small mt-2">API key tidak disimpan di browser. Untuk production, lebih aman isi di Environment Vercel.</p>
+                  <p className="small mt-2">Magnific bisa pakai input ini atau MAGNIFIC_API_KEY di Vercel. Apiframe wajib memakai APIFRAME_API_KEY di Vercel.</p>
                 </div>
 
                 <div>
                   <label className="label mb-2">Model</label>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    {MODELS.map((item) => (
-                      <button
-                        key={item.value}
-                        type="button"
-                        onClick={() => setModel(item.value)}
-                        className={cx(
-                          'rounded-2xl border p-4 text-left transition',
-                          model === item.value ? 'border-yellow-300/60 bg-yellow-300/12' : 'border-white/10 bg-white/[0.04] hover:bg-white/[0.07]'
-                        )}
-                      >
-                        <div className="mb-2 flex items-center justify-between gap-2">
-                          <b>{item.label}</b>
-                          <span className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-black text-yellow-200">{item.tag}</span>
-                        </div>
-                        <p className="small">{item.value}</p>
-                      </button>
-                    ))}
+                    {(provider === 'apiframe' ? APIFRAME_MODELS : MODELS).map((item) => {
+                      const selected = provider === 'apiframe' ? apiframeModel === item.value : model === item.value;
+                      return (
+                        <button
+                          key={item.value}
+                          type="button"
+                          onClick={() => (provider === 'apiframe' ? setApiframeModel(item.value) : setModel(item.value))}
+                          className={cx(
+                            'rounded-2xl border p-4 text-left transition',
+                            selected ? 'border-yellow-300/60 bg-yellow-300/12' : 'border-white/10 bg-white/[0.04] hover:bg-white/[0.07]'
+                          )}
+                        >
+                          <div className="mb-2 flex items-center justify-between gap-2">
+                            <b>{item.label}</b>
+                            <span className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-black text-yellow-200">{item.tag}</span>
+                          </div>
+                          <p className="small">{item.value}</p>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -593,15 +646,18 @@ console.log("DEBUG CLOUDINARY:", {
             <h2 className="text-2xl font-black">Setup yang wajib diisi</h2>
             <p className="mt-3 text-sm leading-7 text-zinc-300">Untuk mengatasi batas video kecil, project ini tidak mengirim video ke server Vercel. Video diupload langsung dari browser ke Cloudinary, lalu URL publiknya dikirim ke API.</p>
             <pre className="prose-code mt-4 overflow-auto rounded-2xl border border-white/10 bg-black/65 p-4 text-xs leading-6 text-zinc-200">{`MAGNIFIC_API_KEY=sk-mag-xxxx
-NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
-NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=your_unsigned_upload_preset`}</pre>
+APIFRAME_API_KEY=afk_xxxxx
+
+# Cloudinary sudah diisi langsung di app/page.js:
+# cloudName = di3ucvll1
+# preset = ml_default`}</pre>
           </div>
           <div className="card p-5 sm:p-6">
             <div className="label mb-2">Catatan penting</div>
             <ul className="space-y-3 text-sm leading-6 text-zinc-300">
-              <li>• Cloudinary preset harus <b>Unsigned</b>.</li>
+              <li>• Cloudinary preset <b>ml_default</b> harus tetap Unsigned.</li>
               <li>• Upload video maksimal di UI diset 250MB.</li>
-              <li>• API key lebih aman disimpan di Vercel, bukan diketik user.</li>
+              <li>• APIFRAME_API_KEY dan MAGNIFIC_API_KEY disimpan di Vercel.</li>
               <li>• PWA aktif setelah build production.</li>
             </ul>
           </div>
